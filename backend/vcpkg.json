@@ -1,0 +1,16 @@
+{
+  "name": "nextrade",
+  "version": "1.0.0",
+  "description": "NexTrade stock trading platform backend",
+  "dependencies": {
+    "crow": ">=1.0.0",
+    "mongo-cxx-driver": ">=3.8.0",
+    "nlohmann-json": ">=3.11.0",
+    "curl": ">=7.0",
+    "openssl": ">=3.0",
+    "jwt-cpp": ">=0.6.0",
+    "bcrypt": ">=1.0.0"
+  },
+  "builtin-baseline": "2024-01-01",
+  "overrides": []
+}

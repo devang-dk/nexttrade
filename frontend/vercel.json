@@ -1,0 +1,18 @@
+{
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/portfolio", "destination": "/portfolio.html" },
+    { "source": "/orders",    "destination": "/orders.html" },
+    { "source": "/payment",   "destination": "/payment.html" },
+    { "source": "/news",      "destination": "/news.html" },
+    { "source": "/screener",  "destination": "/screener.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ]
+}

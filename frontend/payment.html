@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NexTrade Funds — Deposit and withdraw funds to your trading account." />
+  <title>NexTrade — Funds</title>
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <style>
+    .content-area { margin-left: var(--sidebar-width); min-height: 100vh; }
+    
+    /* ===== TOPBAR ===== */
+    .topbar {
+      height: 56px;
+      background: rgba(7,11,20,0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-xl);
+      gap: var(--space-md);
+      flex-shrink: 0;
+    }
+
+    /* ===== TOPBAR NAV ===== */
+    .topnav {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .topnav-sep {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+    .topnav-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: var(--font-sans);
+      transition: background 0.13s, color 0.13s;
+      line-height: 1;
+    }
+    .topnav-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+    }
+    .topnav-item.active {
+      background: rgba(0,208,156,0.10);
+      color: #00d09c;
+    }
+    .topnav-item.danger:hover {
+      background: rgba(235,91,60,0.10);
+      color: #eb5b3c;
+    }
+    .topnav-icon { font-size: 0.85rem; line-height: 1; }
+
+    /* Connection status */
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+
+    /* ===== PROFILE DROPDOWN ===== */
+    .profile-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .profile-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 220px;
+      background: #0b1426;
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+      z-index: 9999;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .profile-dropdown.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: all;
+    }
+    .pd-header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pd-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00d09c, #0066ff);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem; color: #fff;
+      flex-shrink: 0;
+    }
+    .pd-name  { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+    .pd-email { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .pd-badge {
+      margin: 0 16px 8px;
+      padding: 5px 10px;
+      background: rgba(0,208,156,0.08);
+      border: 1px solid rgba(0,208,156,0.2);
+      border-radius: var(--radius-sm);
+      font-size: 0.7rem;
+      color: #00d09c;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .pd-menu { padding: 6px 0; }
+    .pd-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .pd-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .pd-item .pd-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .pd-divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .pd-item.logout { color: #eb5b3c; }
+    .pd-item.logout:hover { background: rgba(235,91,60,0.08); color: #eb5b3c; }
+
+    .page-header { padding: var(--space-xl) var(--space-xl) 0; }
+    .page-body   { padding: var(--space-lg) var(--space-xl); display: flex; flex-direction: column; gap: var(--space-lg); }
+
+    .payment-grid { display: grid; grid-template-columns: 1fr 360px; gap: var(--space-xl); align-items: start; }
+
+    /* Payment form panel */
+    .payment-tabs {
+      display: flex;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      margin-bottom: var(--space-lg);
+    }
+    .p-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: calc(var(--radius-md) - 4px);
+      color: var(--text-secondary);
+      transition: all var(--transition-fast);
+    }
+    .p-tab.active {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Card input styling (Stripe-like) */
+    .card-input-group {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .card-row {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-row:last-child { border-bottom: none; }
+    .card-field {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      gap: 10px;
+    }
+    .card-field + .card-field {
+      border-left: 1px solid var(--border);
+    }
+    .card-field input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+    }
+    .card-field input::placeholder { color: var(--text-muted); font-family: var(--font-sans); }
+    .card-icon { font-size: 1rem; color: var(--text-muted); flex-shrink: 0; }
+
+    .detected-card {
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    /* Amount quick-select */
+    .amount-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .amount-btn {
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all var(--transition-fast);
+    }
+    .amount-btn:hover, .amount-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    /* Success overlay */
+    .success-overlay {
+      display: none;
+      text-align: center;
+      padding: var(--space-2xl) var(--space-lg);
+    }
+    .success-overlay.show { display: block; }
+    .success-checkmark {
+      width: 80px;
+      height: 80px;
+      background: var(--gradient-green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin: 0 auto var(--space-lg);
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes popIn {
+      from { transform: scale(0); }
+      to   { transform: scale(1); }
+    }
+
+    /* Transaction history */
+    .tx-item {
+      display: flex;
+      align-items: center;
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--border);
+      gap: var(--space-md);
+    }
+    .tx-item:last-child { border-bottom: none; }
+    .tx-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .tx-icon.deposit  { background: var(--green-glow); }
+    .tx-icon.withdraw { background: var(--red-glow); }
+    .tx-details { flex: 1; }
+    .tx-type    { font-weight: 700; font-size: 0.875rem; }
+    .tx-date    { font-size: 0.75rem; color: var(--text-secondary); }
+    .tx-amount  { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; }
+
+    /* Processing animation */
+    .processing {
+      display: none;
+      text-align: center;
+      padding: var(--space-2xl);
+    }
+    .processing.show { display: block; }
+    .processing-ring {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto var(--space-md);
+      border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
+
+    @media (max-width: 1024px) { .payment-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px)  { .sidebar { display: none; } .content-area { margin-left: 0; } }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <!-- Logo -->
+  <div class="sidebar-logo" style="flex-shrink:0;">
+    <div class="logo-icon">N</div>
+    <span class="logo-text">NexTrade</span>
+  </div>
+
+  <!-- ── Search bar ── -->
+  <div class="sidebar-search-wrap">
+    <span class="sidebar-search-icon">🔍</span>
+    <input type="text" class="sidebar-search" id="stockSearch"
+           placeholder="Search stocks…"
+           oninput="onSearchInput(this.value)"
+           onblur="setTimeout(()=>closeSearch(),200)" />
+    <div class="sidebar-search-dropdown" id="searchDropdown"></div>
+  </div>
+
+  <!-- ── Live stock list ── -->
+  <div class="sidebar-stocks" id="sidebarStockList">
+    <div class="sidebar-stock-label">Watchlist</div>
+    <!-- Populated by buildSidebarStocks() -->
+  </div>
+
+  <!-- User footer -->
+  <div class="sidebar-footer">
+    <div class="flex items-center gap-sm">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div>
+        <div class="text-sm font-semibold" id="sidebarName">Loading...</div>
+        <div class="text-xs text-muted">Paper Trade Account</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Content -->
+<div class="content-area">
+  <!-- Topbar -->
+  <div class="topbar">
+    <!-- ── Navigation links ── -->
+    <nav class="topnav">
+      <!-- Market -->
+      <a class="topnav-item" href="dashboard.html">
+        <span class="topnav-icon">📊</span> Dashboard
+      </a>
+      <a class="topnav-item" href="screener.html">
+        <span class="topnav-icon">🔍</span> Screener
+      </a>
+      <a class="topnav-item" href="news.html">
+        <span class="topnav-icon">📰</span> News
+      </a>
+
+      <div class="topnav-sep"></div>
+
+      <!-- Trading -->
+      <a class="topnav-item" href="portfolio.html">
+        <span class="topnav-icon">💼</span> Portfolio
+      </a>
+      <a class="topnav-item" href="orders.html">
+        <span class="topnav-icon">📋</span> Orders
+      </a>
+      <a class="topnav-item active" href="payment.html">
+        <span class="topnav-icon">💳</span> Funds
+      </a>
+    </nav>
+
+    <!-- Spacer -->
+    <div style="flex:1;"></div>
+
+    <!-- ── Right side: market switcher + status + balance ── -->
+    <div class="market-switcher-wrap" id="marketSwitcherWrap" style="position:relative; flex-shrink:0;">
+      <div class="market-switcher-pill" id="marketSwitcherPill" onclick="toggleMarketDropdown(event)">
+        <span style="font-size:1rem;">🇺🇸</span>
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-primary);">NYSE / NASDAQ</span>
+        <span style="font-size:0.65rem;color:var(--text-muted);margin-left:6px;">▾</span>
+      </div>
+      <div class="market-switcher-dropdown" id="marketSwitcherDropdown">
+        <div class="mkt-dd-header">Select Market</div>
+      </div>
+    </div>
+
+    <div id="marketStatusBadge" style="
+      display:flex; align-items:center; gap:7px;
+      padding:5px 12px; border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,0.03);
+      font-size:0.78rem; font-weight:600; cursor:default;
+      margin-left: 10px;
+    ">
+      <span id="marketDot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#888;"></span>
+      <span id="marketStatusText">Market —</span>
+      <span id="marketCountdown" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted);"></span>
+    </div>
+
+    <div class="flex items-center gap-md" style="margin-left:14px;">
+      <div style="text-align:right;">
+        <div class="text-xs text-muted">Balance</div>
+        <div class="font-mono font-bold text-accent" id="topbarBalance">$10,000.00</div>
+      </div>
+
+      <!-- Profile avatar + dropdown -->
+      <div class="profile-wrap" id="profileWrap">
+        <div class="user-avatar" id="topbarAvatar"
+             style="cursor:pointer; user-select:none;"
+             onclick="toggleProfileDropdown()">
+          ?
+        </div>
+
+        <!-- Profile dropdown -->
+        <div class="profile-dropdown" id="profileDropdown">
+          <!-- User info -->
+          <div class="pd-header">
+            <div class="pd-avatar" id="pdAvatar">?</div>
+            <div>
+              <div class="pd-name" id="pdName">Loading...</div>
+              <div class="pd-email" id="pdEmail">—</div>
+            </div>
+          </div>
+
+          <!-- Paper trade badge -->
+          <div class="pd-badge">
+            📄 Paper Trade Account
+            &nbsp;&middot;&nbsp;
+            <span id="pdBalance" class="font-mono">$10,000.00</span>
+          </div>
+
+          <!-- Menu items -->
+          <div class="pd-menu">
+            <a class="pd-item" href="portfolio.html">
+              <span class="pd-icon">💼</span> My Portfolio
+            </a>
+            <a class="pd-item" href="orders.html">
+              <span class="pd-icon">📋</span> Order History
+            </a>
+            <div class="pd-divider"></div>
+            <a class="pd-item" href="#" onclick="showComingSoon(event,'Settings'); closeProfileDropdown();">
+              <span class="pd-icon">⚙️</span> Settings
+            </a>
+            <div class="pd-divider"></div>
+            <a class="pd-item logout" href="#" onclick="logout()">
+              <span class="pd-icon">🚪</span> Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-header">
+    <h2>💳 Manage Funds</h2>
+    <p class="text-muted text-sm mt-sm">Deposit or withdraw funds from your trading account</p>
+  </div>
+
+  <div class="page-body">
+
+    <!-- Balance Pills -->
+    <div style="display:flex; gap:var(--space-md); flex-wrap:wrap;">
+      <div class="card-accent" style="padding:16px 24px; display:flex; align-items:center; gap:16px;">
+        <span style="font-size:1.5rem;">💰</span>
+        <div>
+          <div class="text-xs text-muted" style="color:var(--accent);">Available Balance</div>
+          <div class="font-mono font-bold text-2xl text-accent" id="payBalance">$10,000.00</div>
+        </div>
+      </div>
+      <div class="card" style="padding:16px 24px; display:flex; align-items:center; gap:16px;">
+        <span style="font-size:1.4rem;">📈</span>
+        <div>
+          <div class="text-xs text-muted">Portfolio Value</div>
+          <div class="font-mono font-bold text-xl" id="payPortfolioValue">$10,000.00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="payment-grid">
+
+      <!-- Payment Form -->
+      <div class="card">
+        <!-- Tabs -->
+        <div class="payment-tabs">
+          <div class="p-tab active" id="depositTabBtn" onclick="switchPayTab('deposit')">💳 Deposit</div>
+          <div class="p-tab" id="withdrawTabBtn" onclick="switchPayTab('withdraw')">🏦 Withdraw</div>
+        </div>
+
+        <!-- DEPOSIT FORM -->
+        <div id="depositForm">
+          <div id="depositMain">
+            <div class="form-group mb-md">
+              <label class="form-label">Amount (USD)</label>
+              <div class="amount-grid" id="quickAmounts">
+                <button class="amount-btn" onclick="setAmount(100)">$100</button>
+                <button class="amount-btn" onclick="setAmount(500)">$500</button>
+                <button class="amount-btn" onclick="setAmount(1000)">$1,000</button>
+                <button class="amount-btn" onclick="setAmount(2500)">$2,500</button>
+                <button class="amount-btn" onclick="setAmount(5000)">$5,000</button>
+                <button class="amount-btn" onclick="setAmount(10000)">$10,000</button>
+              </div>
+              <input type="number" class="form-input" id="depositAmount" placeholder="Or enter custom amount" 
+                     min="10" max="100000" step="0.01" oninput="clearAmountBtns()" />
+            </div>
+
+            <!-- Card Input -->
+            <div class="form-group mb-md">
+              <label class="form-label">Card Details</label>
+              <div class="card-input-group">
+                <div class="card-row">
+                  <div class="card-field" style="flex:1;">
+                    <span class="card-icon">💳</span>
+                    <input type="text" id="cardNumber" placeholder="Card number" maxlength="19"
+                           oninput="formatCardNumber(this)" />
+                    <span class="detected-card" id="cardType"></span>
+                  </div>
+                </div>
+                <div class="card-row">
+                  <div class="card-field" style="flex:1;">
+                    <span class="card-icon">👤</span>
+                    <input type="text" id="cardName" placeholder="Cardholder name" />
+                  </div>
+                </div>
+                <div class="card-row">
+                  <div class="card-field">
+                    <span class="card-icon">📅</span>
+                    <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5"
+                           oninput="formatExpiry(this)" />
+                  </div>
+                  <div class="card-field">
+                    <span class="card-icon">🔒</span>
+                    <input type="password" id="cardCvv" placeholder="CVV" maxlength="4" />
+                  </div>
+                </div>
+              </div>
+              <p class="text-xs text-muted mt-sm">🔒 This is a demo — no real card data is processed.</p>
+            </div>
+
+            <div id="depositError" class="form-error mb-md"></div>
+
+            <button class="btn btn-primary btn-full btn-lg" onclick="handleDeposit()" id="depositBtn">
+              💳 Deposit Funds
+            </button>
+          </div>
+
+          <!-- Processing State -->
+          <div class="processing" id="depositProcessing">
+            <div class="processing-ring"></div>
+            <h3>Processing Payment...</h3>
+            <p class="text-muted mt-sm">Please wait while we securely process your deposit.</p>
+          </div>
+
+          <!-- Success State -->
+          <div class="success-overlay" id="depositSuccess">
+            <div class="success-checkmark">✓</div>
+            <h3 class="text-green">Deposit Successful!</h3>
+            <p class="text-muted mt-sm" id="depositSuccessMsg">$500.00 added to your account.</p>
+            <div style="margin-top:24px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="resetDepositForm()">Make Another Deposit</button>
+              <a href="dashboard.html" class="btn btn-outline">Start Trading →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- WITHDRAW FORM -->
+        <div id="withdrawForm" style="display:none;">
+          <div id="withdrawMain">
+            <div style="background:rgba(255,214,10,0.08); border:1px solid rgba(255,214,10,0.3); border-radius:var(--radius-md); padding:12px 14px; margin-bottom:16px; font-size:0.85rem; color:var(--yellow);">
+              ⚠️ Withdrawals are sent to your registered bank account. Allow 1–3 business days.
+            </div>
+
+            <div class="form-group mb-md">
+              <label class="form-label">Available Balance</label>
+              <div class="form-input" style="color:var(--accent); font-weight:700; font-family:var(--font-mono);" id="withdrawAvailable">$10,000.00</div>
+            </div>
+
+            <div class="form-group mb-md">
+              <label class="form-label">Withdraw Amount (USD)</label>
+              <div class="amount-grid">
+                <button class="amount-btn" onclick="setWithdrawAmount(100)">$100</button>
+                <button class="amount-btn" onclick="setWithdrawAmount(500)">$500</button>
+                <button class="amount-btn" onclick="setWithdrawAmount(1000)">$1,000</button>
+                <button class="amount-btn" onclick="setWithdrawAmount(2500)">$2,500</button>
+                <button class="amount-btn" onclick="setWithdrawAmount(5000)">$5,000</button>
+                <button class="amount-btn" onclick="selectAllFunds()">All</button>
+              </div>
+              <input type="number" class="form-input" id="withdrawAmount" placeholder="Enter amount" min="10" step="0.01" />
+            </div>
+
+            <div class="form-group mb-md">
+              <label class="form-label">Bank Account (Last 4 digits)</label>
+              <input type="text" class="form-input" id="bankLast4" placeholder="e.g. 4242" maxlength="4" 
+                     style="font-family:var(--font-mono);" />
+            </div>
+
+            <div id="withdrawError" class="form-error mb-md"></div>
+
+            <button class="btn btn-sell btn-full btn-lg" onclick="handleWithdraw()" id="withdrawBtn">
+              🏦 Withdraw Funds
+            </button>
+          </div>
+
+          <!-- Processing / Success for withdraw -->
+          <div class="processing" id="withdrawProcessing">
+            <div class="processing-ring"></div>
+            <h3>Processing Withdrawal...</h3>
+            <p class="text-muted mt-sm">Verifying your request securely.</p>
+          </div>
+          <div class="success-overlay" id="withdrawSuccess">
+            <div class="success-checkmark" style="background:var(--gradient-red);">✓</div>
+            <h3 style="color:var(--red);">Withdrawal Initiated!</h3>
+            <p class="text-muted mt-sm" id="withdrawSuccessMsg">Funds will arrive in 1–3 business days.</p>
+            <button class="btn btn-ghost mt-lg" onclick="resetWithdrawForm()">Make Another Request</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Transaction History + Info -->
+      <div style="display:flex; flex-direction:column; gap:var(--space-lg);">
+
+        <!-- Security badge -->
+        <div class="card" style="padding:var(--space-md);">
+          <h5 style="margin-bottom:10px;">🔒 Secure & Safe</h5>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div class="flex items-center gap-sm">
+              <span class="badge badge-green">✓</span>
+              <span class="text-sm text-muted">256-bit SSL encryption</span>
+            </div>
+            <div class="flex items-center gap-sm">
+              <span class="badge badge-green">✓</span>
+              <span class="text-sm text-muted">PCI DSS compliant</span>
+            </div>
+            <div class="flex items-center gap-sm">
+              <span class="badge badge-green">✓</span>
+              <span class="text-sm text-muted">2FA protected</span>
+            </div>
+            <div class="flex items-center gap-sm">
+              <span class="badge badge-accent">DEMO</span>
+              <span class="text-sm text-muted">No real money involved</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:14px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <h5>Recent Transactions</h5>
+            <button class="btn btn-ghost btn-sm" onclick="loadTransactions()">Refresh</button>
+          </div>
+          <div id="txHistory" style="padding:var(--space-md); max-height:400px; overflow-y:auto;">
+            <div class="text-center text-muted text-sm" style="padding:30px 0;">No transactions yet</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="assets/js/config.js"></script>`n<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/shared.js"></script>
+<script src="assets/js/payment.js"></script>
+
+<script>
+// Profile dropdown functionality
+function toggleProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  dropdown.classList.toggle('open');
+}
+
+function closeProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  dropdown.classList.remove('open');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+  const profileWrap = document.getElementById('profileWrap');
+  const dropdown = document.getElementById('profileDropdown');
+  
+  if (profileWrap && !profileWrap.contains(event.target)) {
+    dropdown.classList.remove('open');
+  }
+});
+
+// Initialize shared UI (sidebar, topbar details, market status)
+document.addEventListener('DOMContentLoaded', function() {
+  initSharedUI();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NexTrade Dashboard — Real-time stock trading with live charts, instant order execution, and market analysis." />
+  <title>NexTrade — Dashboard</title>
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <!-- TradingView Lightweight Charts -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    /* ===== DASHBOARD LAYOUT ===== */
+    .dashboard-layout {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-left: var(--sidebar-width);
+    }
+
+    /* ===== TICKER TAPE ===== */
+    .ticker-tape { height: 38px; display: flex; align-items: center; overflow: hidden; }
+    .ticker-inner {
+      display: flex;
+      gap: 48px;
+      animation: ticker-scroll 60s linear infinite;
+      will-change: transform;
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      padding: 0 8px;
+    }
+    .ticker-sym  { font-weight: 700; font-family: var(--font-mono); font-size: 0.8rem; }
+    .ticker-prc  { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); }
+    .ticker-chg  { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; }
+
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      height: 56px;
+      background: rgba(7,11,20,0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-xl);
+      gap: var(--space-md);
+      flex-shrink: 0;
+    }
+
+    /* ===== MAIN GRID ===== */
+    .dashboard-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-lg) var(--space-xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-md);
+    }
+
+    /* Main chart + order panel */
+    .chart-order-row {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: var(--space-md);
+      min-height: 460px;
+    }
+
+    /* Chart Panel */
+    .chart-panel {
+      background: var(--gradient-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chart-header {
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    /* Row 1: symbol + price + change pill + last fill */
+    .chart-header-row1 {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+    .chart-symbol-info { display: flex; align-items: baseline; gap: 10px; flex: 1; flex-wrap: wrap; min-width: 0; }
+    /* Row 2: controls */
+    .chart-header-row2 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .last-fill-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      white-space: nowrap;
+    }
+    .chart-symbol { font-size: 1.3rem; font-weight: 800; font-family: var(--font-mono); }
+    .chart-price  {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 1.4rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+    }
+    .chart-price-usd {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    /* Sidebar + watchlist local currency sub-label */
+    .ss-local, .wl-local {
+      display: block;
+      font-size: 0.62rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      line-height: 1.2;
+    }
+    .chart-intervals { display: flex; gap: 4px; }
+    .interval-btn {
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      transition: all var(--transition-fast);
+    }
+    .interval-btn.active, .interval-btn:hover {
+      background: var(--accent-glow);
+      color: var(--accent);
+    }
+    .chart-type-btns { display: flex; gap: 4px; }
+    .chart-type-btn {
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all var(--transition-fast);
+    }
+    .chart-type-btn.active {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: var(--border-light);
+    }
+    #mainChart { flex: 1; min-height: 360px; }
+
+    /* ===== INDICATOR TOGGLES ===== */
+    .indicator-btns { display: flex; gap: 4px; align-items: center; }
+    .ind-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .ind-btn .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      opacity: 0.4;
+      transition: opacity 0.15s;
+    }
+    .ind-btn.active { background: rgba(255,255,255,0.05); color: var(--text-primary); border-color: var(--border-light); }
+    .ind-btn.active .dot { opacity: 1; }
+    .ind-btn:hover { border-color: var(--border-light); color: var(--text-primary); }
+    .ind-btn:hover .dot { opacity: 0.8; }
+
+    /* ===== OHLC HOVER BAR ===== */
+    .ohlc-bar {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      padding: 5px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      flex-wrap: wrap;
+    }
+    .ohlc-label { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 2px; }
+    .ohlc-val   { color: var(--text-primary); font-weight: 600; }
+    .ohlc-pct   { font-weight: 700; font-size: 0.72rem; padding: 1px 7px; border-radius: 999px; }
+    .ohlc-pct.up   { background: rgba(0,208,156,0.12); color: #00d09c; }
+    .ohlc-pct.down { background: rgba(235,91,60,0.12);  color: #eb5b3c; }
+    .ohlc-sep { color: var(--border-light); }
+
+    /* ===== INDICATOR LEGEND ===== */
+    .indicator-legend {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      padding: 4px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      flex-wrap: wrap;
+    }
+    .ind-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-secondary);
+    }
+    .ind-legend-item .line {
+      width: 18px; height: 2px;
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+    .ind-legend-val { font-weight: 600; }
+
+    /* Order Panel */
+    .order-panel {
+      background: var(--gradient-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .order-tabs {
+      display: flex;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .order-tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      color: var(--text-secondary);
+    }
+    .order-tab.buy.active  { color: var(--green);  border-bottom: 2px solid var(--green); background: var(--green-glow); }
+    .order-tab.sell.active { color: var(--red);    border-bottom: 2px solid var(--red);   background: var(--red-glow); }
+
+    .order-body { padding: var(--space-md); display: flex; flex-direction: column; gap: 12px; flex: 1; }
+
+    .order-type-row { display: flex; gap: 6px; }
+    .order-type-btn {
+      flex: 1;
+      padding: 6px;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all var(--transition-fast);
+    }
+    .order-type-btn.active {
+      background: var(--bg-card-hover);
+      border-color: var(--border-light);
+      color: var(--text-primary);
+    }
+
+    .order-summary {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+    .summary-row .label { color: var(--text-secondary); }
+    .summary-total {
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .balance-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--accent-glow);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+    }
+    .balance-label { font-size: 0.75rem; color: var(--accent); font-weight: 600; }
+    .balance-amount { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 0.95rem; }
+
+    /* ===== BOTTOM ROW ===== */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    /* Watchlist */
+    .watchlist-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background var(--transition-fast);
+      gap: 12px;
+    }
+    .watchlist-item:hover { background: rgba(255,255,255,0.04); }
+    .watchlist-item.active { background: var(--accent-glow); border: 1px solid var(--border-accent); }
+    .watchlist-sym  { font-weight: 700; font-family: var(--font-mono); font-size: 0.9rem; width: 60px; }
+    .watchlist-name { font-size: 0.75rem; color: var(--text-secondary); flex: 1; }
+    .watchlist-price{ font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem; }
+    .watchlist-chg  { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; width: 60px; text-align: right; }
+
+    /* Order History */
+    .order-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .order-badge.buy  { background: var(--green-glow); color: var(--green); }
+    .order-badge.sell { background: var(--red-glow);   color: var(--red); }
+    .order-badge.pending { background: rgba(255,214,10,0.1); color: var(--yellow); }
+
+    /* Market movers widget */
+    .movers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .mover-card {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .mover-card:hover { border-color: var(--border-light); background: rgba(255,255,255,0.03); }
+    .mover-sym   { font-size: 0.8rem; font-weight: 700; }
+    .mover-price { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; margin-top: 2px; }
+    .mover-chg   { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1280px) {
+      .chart-order-row { grid-template-columns: 1fr 300px; }
+    }
+    @media (max-width: 1100px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .chart-order-row { grid-template-columns: 1fr; }
+      .bottom-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content-area { margin-left: 0; }
+      .dashboard-body { padding: var(--space-md); }
+    }
+
+    /* Connection status */
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+
+
+    /* ===== TOPBAR NAV ===== */
+    .topnav {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .topnav-sep {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+    .topnav-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: var(--font-sans);
+      transition: background 0.13s, color 0.13s;
+      line-height: 1;
+    }
+    .topnav-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+    }
+    .topnav-item.active {
+      background: rgba(0,208,156,0.10);
+      color: #00d09c;
+    }
+    .topnav-item.danger:hover {
+      background: rgba(235,91,60,0.10);
+      color: #eb5b3c;
+    }
+    .topnav-icon { font-size: 0.85rem; line-height: 1; }
+
+    /* ===== PROFILE DROPDOWN ===== */
+    .profile-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .profile-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 220px;
+      background: #0b1426;
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+      z-index: 9999;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .profile-dropdown.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: all;
+    }
+    .pd-header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pd-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00d09c, #0066ff);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem; color: #fff;
+      flex-shrink: 0;
+    }
+    .pd-name  { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+    .pd-email { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .pd-badge {
+      margin: 0 16px 8px;
+      padding: 5px 10px;
+      background: rgba(0,208,156,0.08);
+      border: 1px solid rgba(0,208,156,0.2);
+      border-radius: var(--radius-sm);
+      font-size: 0.7rem;
+      color: #00d09c;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .pd-menu { padding: 6px 0; }
+    .pd-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .pd-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .pd-item .pd-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .pd-divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .pd-item.logout { color: #eb5b3c; }
+    .pd-item.logout:hover { background: rgba(235,91,60,0.08); color: #eb5b3c; }
+
+    /* ===== SIDEBAR REDESIGN — Groww style ===== */
+    .sidebar {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    /* Search bar inside sidebar */
+    .sidebar-search-wrap {
+      padding: 10px 12px 6px;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .sidebar-search {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px 12px 8px 34px;
+      color: var(--text-primary);
+      font-size: 0.78rem;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color 0.15s;
+      box-sizing: border-box;
+    }
+    .sidebar-search:focus {
+      border-color: var(--border-accent);
+      background: rgba(255,255,255,0.07);
+    }
+    .sidebar-search::placeholder { color: var(--text-muted); }
+    .sidebar-search-icon {
+      position: absolute;
+      left: 22px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.75rem;
+      pointer-events: none;
+      color: var(--text-muted);
+    }
+    /* Dropdown for sidebar search */
+    .sidebar-search-dropdown {
+      position: absolute;
+      top: calc(100% - 2px);
+      left: 12px;
+      right: 12px;
+      background: #0b1426;
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      max-height: 240px;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    }
+    .sidebar-search-dropdown.open { display: flex; }
+    .sidebar-search-dropdown .search-result-item {
+      padding: 9px 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      transition: background 0.1s;
+    }
+    .sidebar-search-dropdown .search-result-item:hover { background: rgba(255,255,255,0.05); }
+
+    /* Stock list section */
+    .sidebar-stocks {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 0;
+    }
+    .sidebar-stocks::-webkit-scrollbar { width: 3px; }
+    .sidebar-stocks::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .sidebar-stock-label {
+      padding: 6px 14px 4px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .sidebar-stock-item {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: background 0.12s;
+      gap: 10px;
+      border-radius: 0;
+      border-left: 2px solid transparent;
+    }
+    .sidebar-stock-item:hover { background: rgba(255,255,255,0.04); }
+    .sidebar-stock-item.active {
+      background: rgba(0,208,156,0.07);
+      border-left-color: #00d09c;
+    }
+    .ss-left { flex: 1; min-width: 0; }
+    .ss-sym  { font-weight: 700; font-size: 0.82rem; font-family: var(--font-mono); }
+    .ss-name { font-size: 0.67rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .ss-right { text-align: right; flex-shrink: 0; }
+    .ss-price { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; }
+    .ss-chg   { font-family: var(--font-mono); font-size: 0.67rem; font-weight: 700; margin-top: 1px; }
+
+    /* Sidebar bottom nav */
+    .sidebar-bottom-nav {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      padding: 8px 0 0;
+    }
+    .sidebar-bottom-nav .nav-section-label {
+      font-size: 0.57rem;
+      padding: 4px 14px 2px;
+    }
+    .sidebar-bottom-nav .nav-item {
+      padding: 7px 14px;
+      font-size: 0.78rem;
+    }
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding: 10px 14px;
+      flex-shrink: 0;
+    }
+
+    /* ===== MARKET STATUS HERO BANNER ===== */
+    .market-status-banner {
+      display: none; /* shown by JS when not open */
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--gradient-card);
+      padding: 20px 28px;
+      align-items: center;
+      gap: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .market-status-banner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0.07;
+      background: radial-gradient(ellipse at 10% 50%, var(--msb-color, #888) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .msb-icon {
+      font-size: 2.4rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .msb-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .msb-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--msb-color, #888);
+      letter-spacing: 0.02em;
+    }
+    .msb-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .msb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .msb-countdown {
+      font-family: var(--font-mono);
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--msb-color, #888);
+      letter-spacing: 0.04em;
+    }
+    .msb-next-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .msb-et-time {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar" id="sidebar">
+
+  <!-- Logo -->
+  <div class="sidebar-logo" style="flex-shrink:0;">
+    <div class="logo-icon">N</div>
+    <span class="logo-text">NexTrade</span>
+  </div>
+
+
+  <!-- ── Search bar ── -->
+  <div class="sidebar-search-wrap">
+    <span class="sidebar-search-icon">🔍</span>
+    <input type="text" class="sidebar-search" id="stockSearch"
+           placeholder="Search stocks…"
+           oninput="onSearchInput(this.value)"
+           onblur="setTimeout(()=>closeSearch(),200)" />
+    <div class="sidebar-search-dropdown" id="searchDropdown"></div>
+  </div>
+
+  <!-- ── Live stock list ── -->
+  <div class="sidebar-stocks" id="sidebarStockList">
+    <div class="sidebar-stock-label">Watchlist</div>
+    <!-- Populated by buildSidebarStocks() -->
+  </div>
+
+
+  <!-- User footer -->
+  <div class="sidebar-footer">
+    <div class="flex items-center gap-sm">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div>
+        <div class="text-sm font-semibold" id="sidebarName">Loading...</div>
+        <div class="text-xs text-muted">Paper Trade Account</div>
+      </div>
+    </div>
+  </div>
+
+</nav>
+
+
+
+
+<!-- ===== CONTENT AREA ===== -->
+<div class="content-area">
+
+  <!-- Ticker Tape -->
+  <div class="ticker-tape" id="tickerTape">
+    <div class="ticker-inner" id="tickerInner">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Top Bar — horizontal nav + status -->
+  <div class="topbar">
+
+    <!-- ── Navigation links ── -->
+    <nav class="topnav">
+      <!-- Market -->
+      <a class="topnav-item active" href="dashboard.html">
+        <span class="topnav-icon">📊</span> Dashboard
+      </a>
+      <a class="topnav-item" href="screener.html">
+        <span class="topnav-icon">🔍</span> Screener
+      </a>
+      <a class="topnav-item" href="news.html">
+        <span class="topnav-icon">📰</span> News
+      </a>
+
+      <div class="topnav-sep"></div>
+
+      <!-- Trading -->
+      <a class="topnav-item" href="portfolio.html">
+        <span class="topnav-icon">💼</span> Portfolio
+      </a>
+      <a class="topnav-item" href="orders.html">
+        <span class="topnav-icon">📋</span> Orders
+      </a>
+      <a class="topnav-item" href="payment.html">
+        <span class="topnav-icon">💳</span> Funds
+      </a>
+    </nav>
+
+    <!-- Spacer -->
+    <div style="flex:1;"></div>
+
+    <!-- ── Market Switcher (topbar) ── -->
+    <div class="market-switcher-wrap" id="marketSwitcherWrap" style="position:relative; flex-shrink:0;">
+      <div class="market-switcher-pill" id="marketSwitcherPill" onclick="toggleMarketDropdown(event)">
+        <span style="font-size:1rem;">🇺🇸</span>
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-primary);">NYSE / NASDAQ</span>
+        <span style="font-size:0.65rem;color:var(--text-muted);margin-left:6px;">▾</span>
+      </div>
+      <div class="market-switcher-dropdown" id="marketSwitcherDropdown">
+        <div class="mkt-dd-header">Select Market</div>
+      </div>
+    </div>
+
+    <div id="marketStatusBadge" style="
+      display:flex; align-items:center; gap:7px;
+      padding:5px 12px; border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,0.03);
+      font-size:0.78rem; font-weight:600; cursor:default;
+      margin-left: 10px;
+    ">
+      <span id="marketDot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#888;"></span>
+      <span id="marketStatusText">Market —</span>
+      <span id="marketCountdown" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted);"></span>
+    </div>
+
+    <div class="flex items-center gap-md" style="margin-left:14px;">
+      <div style="text-align:right;">
+        <div class="text-xs text-muted">Balance</div>
+        <div class="font-mono font-bold text-accent" id="topbarBalance">—</div>
+      </div>
+
+      <!-- Profile avatar + dropdown -->
+      <div class="profile-wrap" id="profileWrap">
+        <div class="user-avatar" id="topbarAvatar"
+             style="cursor:pointer; user-select:none;"
+             onclick="toggleProfileDropdown()">
+          ?
+        </div>
+
+        <!-- Profile dropdown -->
+        <div class="profile-dropdown" id="profileDropdown">
+          <!-- User info -->
+          <div class="pd-header">
+            <div class="pd-avatar" id="pdAvatar">?</div>
+            <div>
+              <div class="pd-name" id="pdName">Loading...</div>
+              <div class="pd-email" id="pdEmail">—</div>
+            </div>
+          </div>
+
+          <!-- Paper trade badge -->
+          <div class="pd-badge">
+            📄 Paper Trade Account
+            &nbsp;&middot;&nbsp;
+            <span id="pdBalance" class="font-mono">—</span>
+          </div>
+
+          <!-- Menu items -->
+          <div class="pd-menu">
+            <a class="pd-item" href="portfolio.html">
+              <span class="pd-icon">💼</span> My Portfolio
+            </a>
+            <a class="pd-item" href="orders.html">
+              <span class="pd-icon">📋</span> Order History
+            </a>
+            <div class="pd-divider"></div>
+            <a class="pd-item" href="#" onclick="showComingSoon(event,'Settings'); closeProfileDropdown();">
+              <span class="pd-icon">⚙️</span> Settings
+            </a>
+            <div class="pd-divider"></div>
+            <a class="pd-item logout" href="#" onclick="logout()">
+              <span class="pd-icon">🚪</span> Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Body -->
+  <div class="dashboard-body">
+
+    <!-- ===== MARKET STATUS BANNER ===== -->
+    <div class="market-status-banner" id="marketStatusBanner">
+      <div class="msb-icon" id="msbIcon">🔴</div>
+      <div class="msb-body">
+        <div class="msb-title" id="msbTitle">Market Closed</div>
+        <div class="msb-subtitle" id="msbSubtitle">NYSE is currently closed. Trading resumes during regular session hours (Mon–Fri, 9:30–16:00 ET).</div>
+      </div>
+      <div class="msb-right">
+        <span class="msb-et-time" id="msbEtTime">— ET</span>
+        <div class="msb-next-label" id="msbNextLabel">Opens in</div>
+        <div class="msb-countdown" id="msbCountdown">—</div>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">💼 Portfolio Value</div>
+        <div class="stat-value" id="statPortfolioValue">$10,000.00</div>
+        <div class="stat-change"><span class="change-pill up" id="statPortfolioChange">▲ +0.00%</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💰 Available Cash</div>
+        <div class="stat-value" id="statCash">$10,000.00</div>
+        <div class="stat-change text-muted" style="font-size:0.75rem;">Paper trading balance</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📈 Today's P&amp;L</div>
+        <div class="stat-value text-green" id="statPnl">$0.00</div>
+        <div class="stat-change"><span class="change-pill up" id="statPnlPct">+0.00%</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🔢 Total Orders</div>
+        <div class="stat-value" id="statOrders">0</div>
+        <div class="stat-change text-muted" style="font-size:0.75rem;">This session</div>
+      </div>
+    </div>
+
+    <!-- Chart + Order Panel -->
+    <div class="chart-order-row">
+
+      <!-- Chart Panel -->
+      <div class="chart-panel">
+        <div class="chart-header">
+          <!-- Row 1: Symbol + Price + Change + Last Fill -->
+          <div class="chart-header-row1">
+            <div class="chart-symbol-info">
+              <span class="chart-symbol" id="chartSymbol">AAPL</span>
+              <span class="chart-price price-up" id="chartPrice">—</span>
+              <span class="change-pill up" id="chartChange">▲ +1.23%</span>
+            </div>
+            <span class="last-fill-label" id="lastFillPrice">Last Fill: —</span>
+          </div>
+          <!-- Row 2: Chart controls -->
+          <div class="chart-header-row2">
+            <div class="chart-type-btns">
+              <button class="chart-type-btn active" onclick="setChartType('candlestick', this)">Candle</button>
+              <button class="chart-type-btn" onclick="setChartType('line', this)">Line</button>
+            </div>
+            <div class="chart-intervals">
+              <button class="interval-btn" onclick="setChartInterval('1D', this)">1D</button>
+              <button class="interval-btn" onclick="setChartInterval('1W', this)">1W</button>
+              <button class="interval-btn active" onclick="setChartInterval('1M', this)">1M</button>
+              <button class="interval-btn" onclick="setChartInterval('3M', this)">3M</button>
+              <button class="interval-btn" onclick="setChartInterval('1Y', this)">1Y</button>
+            </div>
+            <!-- Indicator Toggles -->
+            <div class="indicator-btns">
+              <button class="ind-btn active" id="btnEMA"  onclick="toggleIndicator('EMA')"><span class="dot" style="background:#f59e0b"></span>EMA 9</button>
+              <button class="ind-btn active" id="btnMA20" onclick="toggleIndicator('MA20')"><span class="dot" style="background:#818cf8"></span>MA 20</button>
+              <button class="ind-btn active" id="btnMA50" onclick="toggleIndicator('MA50')"><span class="dot" style="background:#fb923c"></span>MA 50</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- OHLC Hover Bar — shown on crosshair move -->
+        <div class="ohlc-bar" id="ohlcBar">
+          <span><span class="ohlc-label">O</span><span class="ohlc-val" id="ohlcO">—</span></span>
+          <span><span class="ohlc-label">H</span><span class="ohlc-val" id="ohlcH">—</span></span>
+          <span><span class="ohlc-label">L</span><span class="ohlc-val" id="ohlcL">—</span></span>
+          <span><span class="ohlc-label">C</span><span class="ohlc-val" id="ohlcC">—</span></span>
+          <span class="ohlc-pct" id="ohlcPct">—</span>
+        </div>
+
+        <!-- Indicator Legend — shown when any MA is active -->
+        <div class="indicator-legend" id="indicatorLegend">
+          <span class="ind-legend-item" id="legendEMARow"><span class="line" style="background:#f59e0b"></span>EMA9 <span class="ind-legend-val" id="legendEMA">—</span></span>
+          <span class="ind-legend-item" id="legendMA20Row"><span class="line" style="background:#818cf8"></span>MA20 <span class="ind-legend-val" id="legendMA20">—</span></span>
+          <span class="ind-legend-item" id="legendMA50Row"><span class="line" style="background:#fb923c"></span>MA50 <span class="ind-legend-val" id="legendMA50">—</span></span>
+        </div>
+
+        <div id="mainChart"></div>
+      </div>
+
+      <!-- Order Panel -->
+      <div class="order-panel">
+        <div class="order-tabs">
+          <div class="order-tab buy active" id="buyTab" onclick="switchOrderTab('buy')">BUY</div>
+          <div class="order-tab sell" id="sellTab" onclick="switchOrderTab('sell')">SELL</div>
+        </div>
+        <div class="order-body">
+
+          <div class="balance-display">
+            <span class="balance-label">💰 Available</span>
+            <span class="balance-amount" id="orderBalance">—</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Symbol</label>
+            <input type="text" class="form-input" id="orderSymbol" value=""
+                   style="font-family:var(--font-mono); font-weight:700; text-transform:uppercase;"
+                   oninput="this.value=this.value.toUpperCase(); updateOrderSummary()" />
+          </div>
+
+          <div class="order-type-row">
+            <button class="order-type-btn active" id="otMarket" onclick="setOrderType('market')">Market</button>
+            <button class="order-type-btn" id="otLimit"  onclick="setOrderType('limit')">Limit</button>
+            <button class="order-type-btn" id="otStop"   onclick="setOrderType('stop')">Stop</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Quantity (Shares)</label>
+            <input type="number" class="form-input" id="orderQty" value="1" min="1" max="10000"
+                   style="font-family:var(--font-mono);"
+                   oninput="updateOrderSummary()" />
+          </div>
+
+          <div class="form-group" id="limitPriceGroup" style="display:none;">
+            <label class="form-label" id="limitPriceLabel">Limit Price</label>
+            <input type="number" class="form-input" id="limitPrice" step="0.01"
+                   style="font-family:var(--font-mono);" oninput="updateOrderSummary()" />
+          </div>
+
+          <div class="order-summary">
+            <div class="summary-row">
+              <span class="label">Market Price</span>
+              <span class="font-mono" id="summary-price">—</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Shares</span>
+              <span class="font-mono" id="summary-shares">1</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Est. Fee</span>
+              <span class="font-mono text-muted" id="summary-fee">0.00</span>
+            </div>
+            <div class="summary-row summary-total">
+              <span>Total</span>
+              <span class="font-mono" id="summary-total">—</span>
+            </div>
+          </div>
+
+          <button class="btn btn-buy btn-full btn-lg" id="executeBtn" onclick="executeOrder()">
+            BUY
+          </button>
+          <div id="order-error" class="form-error" style="text-align:center;display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="bottom-row">
+
+      <!-- Watchlist -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <h4>⭐ Watchlist</h4>
+          <span class="text-xs text-muted">Click to load chart</span>
+        </div>
+        <div id="watchlistContainer" style="max-height:280px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- Recent Orders -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <h4>📋 Recent Orders</h4>
+          <button class="btn btn-ghost btn-sm" onclick="clearOrders()">Clear</button>
+        </div>
+        <div id="ordersContainer" style="max-height:280px; overflow-y:auto; padding:12px;">
+          <div class="text-center text-muted" style="padding:40px 0; font-size:0.875rem;">
+            No orders yet. Place your first trade above!
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end dashboard-body -->
+</div><!-- end content-area -->
+
+<!-- ===== ORDER CONFIRMATION MODAL ===== -->
+<div class="modal-overlay" id="orderConfirmModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Confirm Order</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+    <div style="display:flex; gap:12px; margin-top:20px;">
+      <button class="btn btn-ghost btn-full" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-full" id="modalConfirmBtn" onclick="confirmOrder()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="assets/js/config.js"></script>`n<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/shared.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/dashboard.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NexTrade Portfolio — Track your holdings, P&L, and trading performance." />
+  <title>NexTrade — Portfolio</title>
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <style>
+    .content-area { margin-left: var(--sidebar-width); min-height: 100vh; }
+    
+    /* ===== TOPBAR ===== */
+    .topbar {
+      height: 56px;
+      background: rgba(7,11,20,0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-xl);
+      gap: var(--space-md);
+      flex-shrink: 0;
+    }
+
+    /* ===== TOPBAR NAV ===== */
+    .topnav {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .topnav-sep {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+    .topnav-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: var(--font-sans);
+      transition: background 0.13s, color 0.13s;
+      line-height: 1;
+    }
+    .topnav-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+    }
+    .topnav-item.active {
+      background: rgba(0,208,156,0.10);
+      color: #00d09c;
+    }
+    .topnav-item.danger:hover {
+      background: rgba(235,91,60,0.10);
+      color: #eb5b3c;
+    }
+    .topnav-icon { font-size: 0.85rem; line-height: 1; }
+
+    /* Connection status */
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* ===== MARKET SELECTOR ===== */
+
+
+
+    .profile-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .profile-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 220px;
+      background: #0b1426;
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+      z-index: 9999;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .profile-dropdown.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: all;
+    }
+    .pd-header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pd-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00d09c, #0066ff);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem; color: #fff;
+      flex-shrink: 0;
+    }
+    .pd-name  { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+    .pd-email { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .pd-badge {
+      margin: 0 16px 8px;
+      padding: 5px 10px;
+      background: rgba(0,208,156,0.08);
+      border: 1px solid rgba(0,208,156,0.2);
+      border-radius: var(--radius-sm);
+      font-size: 0.7rem;
+      color: #00d09c;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .pd-menu { padding: 6px 0; }
+    .pd-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .pd-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .pd-item .pd-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .pd-divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .pd-item.logout { color: #eb5b3c; }
+    .pd-item.logout:hover { background: rgba(235,91,60,0.08); color: #eb5b3c; }
+
+    .page-header {
+      padding: var(--space-xl) var(--space-xl) 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+    .page-body { padding: var(--space-lg) var(--space-xl); display: flex; flex-direction: column; gap: var(--space-lg); }
+
+    /* Portfolio summary cards */
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); }
+
+    /* Holdings table */
+    .holdings-table tbody td { vertical-align: middle; }
+    .holding-symbol { font-weight: 800; font-family: var(--font-mono); font-size: 0.95rem; }
+    .holding-name   { font-size: 0.75rem; color: var(--text-secondary); }
+
+    /* Allocation chart */
+    .allocation-panel {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: var(--space-lg);
+      align-items: start;
+    }
+    #allocationCanvas { display: block; }
+
+    .allocation-legend { display: flex; flex-direction: column; gap: 8px; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+    }
+    .legend-item:hover { background: rgba(255,255,255,0.03); }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .legend-sym { font-weight: 700; font-family: var(--font-mono); font-size: 0.85rem; min-width: 50px; }
+    .legend-pct { font-size: 0.8rem; color: var(--text-secondary); margin-left: auto; font-family: var(--font-mono); }
+
+    /* Performance chart */
+    .perf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-md);
+    }
+    #perfCanvas { width: 100%; height: 150px; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: var(--space-3xl) var(--space-lg);
+      color: var(--text-secondary);
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: var(--space-md); }
+    .empty-state h3 { color: var(--text-primary); margin-bottom: var(--space-sm); }
+
+    @media (max-width: 1100px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .allocation-panel { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content-area { margin-left: 0; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar (same as dashboard) -->
+<nav class="sidebar" id="sidebar">
+  <!-- Logo -->
+  <div class="sidebar-logo" style="flex-shrink:0;">
+    <div class="logo-icon">N</div>
+    <span class="logo-text">NexTrade</span>
+  </div>
+
+
+
+  <!-- ── Search bar ── -->
+  <div class="sidebar-search-wrap">
+    <span class="sidebar-search-icon">🔍</span>
+    <input type="text" class="sidebar-search" id="stockSearch"
+           placeholder="Search stocks…"
+           oninput="onSearchInput(this.value)"
+           onblur="setTimeout(()=>closeSearch(),200)" />
+    <div class="sidebar-search-dropdown" id="searchDropdown"></div>
+  </div>
+
+  <!-- ── Live stock list ── -->
+  <div class="sidebar-stocks" id="sidebarStockList">
+    <div class="sidebar-stock-label">Watchlist</div>
+    <!-- Populated by buildSidebarStocks() -->
+  </div>
+
+  <!-- User footer -->
+  <div class="sidebar-footer">
+    <div class="flex items-center gap-sm">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div>
+        <div class="text-sm font-semibold" id="sidebarName">Loading...</div>
+        <div class="text-xs text-muted">Paper Trade Account</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Content -->
+<div class="content-area">
+  <!-- Topbar -->
+  <div class="topbar">
+    <!-- ── Navigation links ── -->
+    <nav class="topnav">
+      <!-- Market -->
+      <a class="topnav-item" href="dashboard.html">
+        <span class="topnav-icon">📊</span> Dashboard
+      </a>
+      <a class="topnav-item" href="screener.html">
+        <span class="topnav-icon">🔍</span> Screener
+      </a>
+      <a class="topnav-item" href="news.html">
+        <span class="topnav-icon">📰</span> News
+      </a>
+
+      <div class="topnav-sep"></div>
+
+      <!-- Trading -->
+      <a class="topnav-item active" href="portfolio.html">
+        <span class="topnav-icon">💼</span> Portfolio
+      </a>
+      <a class="topnav-item" href="orders.html">
+        <span class="topnav-icon">📋</span> Orders
+      </a>
+      <a class="topnav-item" href="payment.html">
+        <span class="topnav-icon">💳</span> Funds
+      </a>
+    </nav>
+
+    <!-- Spacer -->
+    <div style="flex:1;"></div>
+
+    <!-- ── Right side: market switcher + status + balance ── -->
+    <div class="market-switcher-wrap" id="marketSwitcherWrap" style="position:relative; flex-shrink:0;">
+      <div class="market-switcher-pill" id="marketSwitcherPill" onclick="toggleMarketDropdown(event)">
+        <span style="font-size:1rem;">🇺🇸</span>
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-primary);">NYSE / NASDAQ</span>
+        <span style="font-size:0.65rem;color:var(--text-muted);margin-left:6px;">▾</span>
+      </div>
+      <div class="market-switcher-dropdown" id="marketSwitcherDropdown">
+        <div class="mkt-dd-header">Select Market</div>
+      </div>
+    </div>
+
+    <div id="marketStatusBadge" style="
+      display:flex; align-items:center; gap:7px;
+      padding:5px 12px; border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,0.03);
+      font-size:0.78rem; font-weight:600; cursor:default;
+      margin-left: 10px;
+    ">
+      <span id="marketDot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#888;"></span>
+      <span id="marketStatusText">Market —</span>
+      <span id="marketCountdown" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted);"></span>
+    </div>
+
+    <div class="flex items-center gap-md" style="margin-left:14px;">
+      <div style="text-align:right;">
+        <div class="text-xs text-muted">Balance</div>
+        <div class="font-mono font-bold text-accent" id="topbarBalance">$10,000.00</div>
+      </div>
+
+      <!-- Profile avatar + dropdown -->
+      <div class="profile-wrap" id="profileWrap">
+        <div class="user-avatar" id="topbarAvatar"
+             style="cursor:pointer; user-select:none;"
+             onclick="toggleProfileDropdown()">
+          ?
+        </div>
+
+        <!-- Profile dropdown -->
+        <div class="profile-dropdown" id="profileDropdown">
+          <!-- User info -->
+          <div class="pd-header">
+            <div class="pd-avatar" id="pdAvatar">?</div>
+            <div>
+              <div class="pd-name" id="pdName">Loading...</div>
+              <div class="pd-email" id="pdEmail">—</div>
+            </div>
+          </div>
+
+          <!-- Paper trade badge -->
+          <div class="pd-badge">
+            📄 Paper Trade Account
+            &nbsp;&middot;&nbsp;
+            <span id="pdBalance" class="font-mono">$10,000.00</span>
+          </div>
+
+          <!-- Menu items -->
+          <div class="pd-menu">
+            <a class="pd-item" href="portfolio.html">
+              <span class="pd-icon">💼</span> My Portfolio
+            </a>
+            <a class="pd-item" href="orders.html">
+              <span class="pd-icon">📋</span> Order History
+            </a>
+            <div class="pd-divider"></div>
+            <a class="pd-item" href="#" onclick="showComingSoon(event,'Settings'); closeProfileDropdown();">
+              <span class="pd-icon">⚙️</span> Settings
+            </a>
+            <div class="pd-divider"></div>
+            <a class="pd-item logout" href="#" onclick="logout()">
+              <span class="pd-icon">🚪</span> Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h2>💼 Portfolio</h2>
+      <p class="text-muted text-sm mt-sm">Your holdings, performance, and allocation</p>
+    </div>
+    <div class="flex items-center gap-md">
+      <a href="dashboard.html" class="btn btn-primary">
+        📈 Trade Now
+      </a>
+      <a href="payment.html" class="btn btn-outline">
+        💳 Add Funds
+      </a>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <!-- Summary Row -->
+    <div class="summary-grid">
+      <div class="stat-card">
+        <div class="stat-label">📊 Total Value</div>
+        <div class="stat-value" id="pTotalValue">$10,000.00</div>
+        <div class="stat-change"><span class="change-pill up" id="pTotalPct">+0.00%</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💰 Cash Balance</div>
+        <div class="stat-value text-accent" id="pCash">$10,000.00</div>
+        <div class="stat-change text-muted" style="font-size:0.75rem;">Available to trade</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📈 Unrealized P&amp;L</div>
+        <div class="stat-value" id="pPnl">$0.00</div>
+        <div class="stat-change"><span class="change-pill up" id="pPnlPct">+0.00%</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🔢 Positions</div>
+        <div class="stat-value" id="pPositions">0</div>
+        <div class="stat-change text-muted" style="font-size:0.75rem;">Active holdings</div>
+      </div>
+    </div>
+
+    <!-- Holdings + Allocation -->
+    <div style="display:grid; grid-template-columns:1fr 360px; gap:var(--space-lg);">
+
+      <!-- Holdings Table -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <h4>Holdings</h4>
+          <span class="text-xs text-muted">Live prices</span>
+        </div>
+        <div class="table-container" style="border:none; border-radius:0;">
+          <table class="holdings-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Shares</th>
+                <th>Avg Cost</th>
+                <th>Current</th>
+                <th>Mkt Value</th>
+                <th>P&amp;L</th>
+                <th>P&amp;L %</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="holdingsBody">
+              <tr>
+                <td colspan="8">
+                  <div class="empty-state" style="padding:40px 0;">
+                    <div class="empty-icon">📭</div>
+                    <h3>No Holdings</h3>
+                    <p style="font-size:0.875rem;">Go to the dashboard and place your first buy order!</p>
+                    <a href="dashboard.html" class="btn btn-primary mt-md">Start Trading</a>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Allocation Chart -->
+      <div class="card">
+        <h4 style="margin-bottom:var(--space-md);">🥧 Allocation</h4>
+        <canvas id="allocationCanvas" width="240" height="240" style="margin:0 auto; display:block;"></canvas>
+        <div class="allocation-legend mt-md" id="allocationLegend">
+          <div class="text-center text-muted text-sm" style="padding:20px 0;">No holdings yet</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+        <h4>📋 Order History</h4>
+      </div>
+      <div class="table-container" style="border:none; border-radius:0;">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Symbol</th>
+              <th>Shares</th>
+              <th>Price</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="orderHistoryBody">
+            <tr><td colspan="7" class="text-center text-muted" style="padding:30px;">No orders yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="assets/js/config.js"></script>`n<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/shared.js"></script>
+<script src="assets/js/portfolio.js"></script>
+
+<script>
+// Profile dropdown functionality
+function toggleProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  dropdown.classList.toggle('open');
+}
+
+function closeProfileDropdown() {
+  const dropdown = document.getElementById('profileDropdown');
+  dropdown.classList.remove('open');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+  const profileWrap = document.getElementById('profileWrap');
+  const dropdown = document.getElementById('profileDropdown');
+  if (profileWrap && !profileWrap.contains(event.target)) {
+    dropdown.classList.remove('open');
+  }
+});
+
+// Initialize shared UI (sidebar stocks, user info, market status)
+document.addEventListener('DOMContentLoaded', function() {
+  initSharedUI();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (NEVER commit these — they contain secrets!)
+.env
+.env.local
+.env.production
+
+# Build outputs
+dist/
+build/
+*.exe
+*.dll
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
