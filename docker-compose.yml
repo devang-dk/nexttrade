@@ -123,7 +123,9 @@ services:
 
   # ── Jenkins: CI/CD ───────────────────────────────────────────────────
   jenkins:
-    image: jenkins/jenkins:lts-jdk21
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
     container_name: nextrade-jenkins
     restart: unless-stopped
     privileged: true                      # needed to run Docker inside Jenkins

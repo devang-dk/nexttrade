@@ -1,11 +1,11 @@
 // =====================================================================
 // Jenkinsfile — NexTrade CI/CD Pipeline
-// npm stages run inside node:18-alpine via Docker-in-Docker socket
+// Jenkins image has Node.js 18 + Docker CLI pre-installed (jenkins/Dockerfile)
+// so all stages run on `agent any` — no Docker-in-Docker agents needed.
 // =====================================================================
 
 pipeline {
 
-  // Global agent — used for checkout & docker build stages
   agent any
 
   triggers {
@@ -34,34 +34,16 @@ pipeline {
     }
 
     // ── 2. Install ─────────────────────────────────────────────────────
-    // Each sub-stage runs inside a Node.js Docker container.
-    // `reuseNode true` = same workspace as outer agent (no extra checkout).
     stage('Install') {
       parallel {
-
         stage('Server deps') {
-          agent {
-            docker {
-              image 'node:18-alpine'
-              reuseNode true          // share the Jenkins workspace
-              args  '-u root'         // avoid permission errors on node_modules
-            }
-          }
           steps {
             dir('server') {
               sh 'npm install --omit=dev'
             }
           }
         }
-
         stage('Client deps') {
-          agent {
-            docker {
-              image 'node:18-alpine'
-              reuseNode true
-              args  '-u root'
-            }
-          }
           steps {
             dir('client') {
               sh 'npm install --legacy-peer-deps'
@@ -74,15 +56,7 @@ pipeline {
     // ── 3. Test ────────────────────────────────────────────────────────
     stage('Test') {
       parallel {
-
         stage('Server tests') {
-          agent {
-            docker {
-              image 'node:18-alpine'
-              reuseNode true
-              args  '-u root'
-            }
-          }
           steps {
             dir('server') {
               sh 'npm test --if-present || echo "ℹ️  No server tests — skipping"'
@@ -94,15 +68,7 @@ pipeline {
             }
           }
         }
-
         stage('Client tests') {
-          agent {
-            docker {
-              image 'node:18-alpine'
-              reuseNode true
-              args  '-u root'
-            }
-          }
           steps {
             dir('client') {
               sh 'CI=true npm test --if-present || echo "ℹ️  No client tests — skipping"'
@@ -113,7 +79,6 @@ pipeline {
     }
 
     // ── 4. Build Docker Images ─────────────────────────────────────────
-    // Back on the global `agent any` (Jenkins host) which has Docker CLI
     stage('Build Images') {
       steps {
         script {
@@ -185,7 +150,6 @@ pipeline {
     }
   }
 
-  // ── Post actions ─────────────────────────────────────────────────────
   post {
     success  { echo "✅ Build #${env.BUILD_NUMBER} PASSED" }
     unstable { echo "⚠️  Build #${env.BUILD_NUMBER} UNSTABLE — optional stages skipped" }
