@@ -336,10 +336,13 @@ async function loadChartData(symbol, interval) {
         const first = data[0];
         updateChartHeader(symbol, last.close, ((last.close - first.close) / first.close * 100));
       }
+      // Always refresh order summary after price is fetched
+      if (typeof updateOrderSummary === 'function') updateOrderSummary();
     }).catch(() => {
       const last  = data[data.length - 1];
       const first = data[0];
       updateChartHeader(symbol, last.close, ((last.close - first.close) / first.close * 100));
+      if (typeof updateOrderSummary === 'function') updateOrderSummary();
     });
 
     startPriceUpdates(symbol);

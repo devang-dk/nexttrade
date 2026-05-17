@@ -432,34 +432,94 @@ router.get('/screener', async (req, res) => {
 });
 
 // ===== GET /api/market/exchange-rate/:fromCode =====
-// Returns real-time exchange rate from any currency to USD
-// e.g. /api/market/exchange-rate/INR  →  { from:'INR', to:'USD', rate:0.01049, pair:'INRUSD=X' }
+// Returns real-time exchange rate from any currency to USD.
+// Source priority:
+//   1. exchangerate-api.com  (free, no key, always accurate)
+//   2. Yahoo Finance pair    (INRUSD=X etc.)
+//   3. Hardcoded fallback    (last resort — never returns garbage)
 const _fxCache = {};
-const FX_TTL   = 5 * 60 * 1000; // 5-minute cache
+const FX_TTL   = 60 * 60 * 1000; // 1-hour cache (FX rates don't move much intraday)
+
+// Hardcoded fallback rates — only used if ALL live sources fail
+const FX_FALLBACK = {
+  INR: 0.01199,  // ₹83.4 per dollar
+  GBP: 1.2720,
+  EUR: 1.0870,
+  JPY: 0.00652,  // ¥153 per dollar
+  HKD: 0.1282,   // HK$7.8 per dollar
+  CAD: 0.7340,
+  AUD: 0.6480,
+  CHF: 1.1050,
+  CNY: 0.1382,
+  SGD: 0.7420,
+};
 
 router.get('/exchange-rate/:fromCode', async (req, res) => {
   try {
     const from = (req.params.fromCode || 'USD').toUpperCase();
 
     // USD → USD is always 1
-    if (from === 'USD') return res.json({ from: 'USD', to: 'USD', rate: 1 });
+    if (from === 'USD') return res.json({ from: 'USD', to: 'USD', rate: 1, source: 'identity' });
 
-    // Check cache
+    // Check cache first
     const cached = _fxCache[from];
     if (cached && Date.now() - cached.time < FX_TTL) {
       return res.json(cached.data);
     }
 
-    const pair = `${from}USD=X`;
-    const quote = await marketDataService.getQuote(pair);
+    // ── 1️⃣ Try exchangerate-api.com (free, no API key required) ──
+    try {
+      const rate = await new Promise((resolve, reject) => {
+        const https = require('https');
+        const req2  = https.get('https://open.er-api.com/v6/latest/USD', { timeout: 5000 }, (r) => {
+          let body = '';
+          r.on('data', chunk => body += chunk);
+          r.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              if (data.rates && data.rates[from]) {
+                resolve({ rate: parseFloat((1 / data.rates[from]).toFixed(6)), updated: data.time_last_update_utc });
+              } else {
+                reject(new Error('Currency not in response'));
+              }
+            } catch (e) { reject(e); }
+          });
+        });
+        req2.on('error', reject);
+        req2.on('timeout', () => { req2.destroy(); reject(new Error('Timeout')); });
+      });
 
-    if (!quote || !quote.price) {
-      return res.status(404).json({ message: `Exchange rate not found for ${from}` });
+      const result = { from, to: 'USD', rate: rate.rate, source: 'exchangerate-api', updated: rate.updated };
+      _fxCache[from] = { data: result, time: Date.now() };
+      return res.json(result);
+    } catch (erApiErr) {
+      console.warn(`[FX] exchangerate-api failed: ${erApiErr.message}`);
     }
 
-    const result = { from, to: 'USD', rate: quote.price, pair };
-    _fxCache[from] = { data: result, time: Date.now() };
-    res.json(result);
+
+    // ── 2️⃣ Try Yahoo Finance currency pair (INRUSD=X) ──
+    try {
+      const pair  = `${from}USD=X`;
+      const quote = await marketDataService.getQuote(pair);
+      // Sanity check: real FX rate for most currencies is between 0.0001 and 100
+      if (quote && quote.price && quote.price > 0 && quote.price < 500) {
+        const result = { from, to: 'USD', rate: quote.price, source: 'yahoo', pair };
+        _fxCache[from] = { data: result, time: Date.now() };
+        return res.json(result);
+      }
+    } catch (yahooErr) {
+      console.warn(`[FX] Yahoo Finance FX failed for ${from}: ${yahooErr.message}`);
+    }
+
+    // ── 3️⃣ Hardcoded fallback — always sane, never garbage ──
+    const fallbackRate = FX_FALLBACK[from];
+    if (fallbackRate) {
+      const result = { from, to: 'USD', rate: fallbackRate, source: 'fallback' };
+      _fxCache[from] = { data: result, time: Date.now() - (FX_TTL - 5 * 60 * 1000) }; // re-try in 5 min
+      return res.json(result);
+    }
+
+    return res.status(404).json({ message: `Exchange rate not found for ${from}` });
 
   } catch (error) {
     console.error('[FX] Exchange rate error:', error.message);

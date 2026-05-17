@@ -16,6 +16,7 @@ const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payment');
 const newsRoutes    = require('./routes/news');
 const marketDataService = require('./services/marketDataService');
+const { metricsMiddleware, metricsEndpoint } = require('./middleware/metrics');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,6 +31,7 @@ const io = socketIO(server, {
 app.use(cors());
 app.use(express.json());
 app.use(express.static('../frontend'));
+app.use(metricsMiddleware); // Prometheus HTTP metrics
 
 // ===== MONGODB CONNECTION =====
 mongoose
@@ -60,6 +62,9 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ===== PROMETHEUS METRICS =====
+app.get('/metrics', metricsEndpoint);
 
 // ===== WEBSOCKET: Real-time Price Stream =====
 const connectedClients = new Set();

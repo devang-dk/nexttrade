@@ -1,0 +1,41 @@
+# =====================================================================
+# Prometheus — Scrape Configuration for NexTrade
+# =====================================================================
+
+global:
+  scrape_interval:     15s   # How often to scrape targets
+  evaluation_interval: 15s   # How often to evaluate rules
+  scrape_timeout:      10s
+
+# Alertmanager configuration (optional — wire up if needed)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Rule files
+# rule_files:
+#   - "alert_rules.yml"
+
+scrape_configs:
+
+  # ── Prometheus itself ────────────────────────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── NexTrade Express Backend ──────────────────────────────────────────
+  - job_name: "nextrade-server"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["server:10000"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "nextrade-server"
+
+  # ── Node Exporter (host machine metrics) ─────────────────────────────
+  # Uncomment if you add node-exporter to docker-compose
+  # - job_name: "node-exporter"
+  #   static_configs:
+  #     - targets: ["node-exporter:9100"]

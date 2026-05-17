@@ -74,6 +74,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   initChart();
 
+  // ── Populate order summary immediately on load (no click required) ──
+  updateOrderSummary();
+  // Retry after 800ms in case the quote API is still fetching
+  setTimeout(updateOrderSummary, 800);
+
   // ── Shared UI (market switcher, sidebar watchlist, market status) ──
   // Must come AFTER initChart so currentSymbol is set correctly
   if (typeof initSharedUI === 'function') initSharedUI();
