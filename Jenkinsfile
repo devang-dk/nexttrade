@@ -1,22 +1,20 @@
 // =====================================================================
 // Jenkinsfile — NexTrade CI/CD Pipeline
-// Stages: Checkout → Install → Test → Build → Push → Deploy
+// npm stages run inside node:18-alpine via Docker-in-Docker socket
 // =====================================================================
 
 pipeline {
 
+  // Global agent — used for checkout & docker build stages
   agent any
 
-  // ── Trigger: poll SCM every 5 minutes ───────────────────────────────
   triggers {
     pollSCM('H/5 * * * *')
   }
 
-  // ── Simple env vars — NO credentials() here so missing creds don't ──
-  // ── kill the entire pipeline before any stage runs                  ──
   environment {
-    SERVER_IMAGE  = "nextrade/server:${env.BUILD_NUMBER}"
-    CLIENT_IMAGE  = "nextrade/client:${env.BUILD_NUMBER}"
+    SERVER_IMAGE = "nextrade/server:${env.BUILD_NUMBER}"
+    CLIENT_IMAGE = "nextrade/client:${env.BUILD_NUMBER}"
   }
 
   options {
@@ -31,21 +29,39 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-        echo "✅ Checked out commit: ${env.GIT_COMMIT?.take(7)} on branch ${env.BRANCH_NAME ?: 'unknown'}"
+        echo "✅ Commit: ${env.GIT_COMMIT?.take(7)} | Branch: ${env.BRANCH_NAME ?: 'main'}"
       }
     }
 
-    // ── 2. Install Dependencies ────────────────────────────────────────
+    // ── 2. Install ─────────────────────────────────────────────────────
+    // Each sub-stage runs inside a Node.js Docker container.
+    // `reuseNode true` = same workspace as outer agent (no extra checkout).
     stage('Install') {
       parallel {
+
         stage('Server deps') {
+          agent {
+            docker {
+              image 'node:18-alpine'
+              reuseNode true          // share the Jenkins workspace
+              args  '-u root'         // avoid permission errors on node_modules
+            }
+          }
           steps {
             dir('server') {
               sh 'npm install --omit=dev'
             }
           }
         }
+
         stage('Client deps') {
+          agent {
+            docker {
+              image 'node:18-alpine'
+              reuseNode true
+              args  '-u root'
+            }
+          }
           steps {
             dir('client') {
               sh 'npm install --legacy-peer-deps'
@@ -55,13 +71,21 @@ pipeline {
       }
     }
 
-    // ── 3. Lint & Test ─────────────────────────────────────────────────
-    stage('Lint & Test') {
+    // ── 3. Test ────────────────────────────────────────────────────────
+    stage('Test') {
       parallel {
+
         stage('Server tests') {
+          agent {
+            docker {
+              image 'node:18-alpine'
+              reuseNode true
+              args  '-u root'
+            }
+          }
           steps {
             dir('server') {
-              sh 'npm run test --if-present || echo "ℹ️  No server tests defined — skipping"'
+              sh 'npm test --if-present || echo "ℹ️  No server tests — skipping"'
             }
           }
           post {
@@ -70,10 +94,18 @@ pipeline {
             }
           }
         }
+
         stage('Client tests') {
+          agent {
+            docker {
+              image 'node:18-alpine'
+              reuseNode true
+              args  '-u root'
+            }
+          }
           steps {
             dir('client') {
-              sh 'CI=true npm run test --if-present || echo "ℹ️  No client tests defined — skipping"'
+              sh 'CI=true npm test --if-present || echo "ℹ️  No client tests — skipping"'
             }
           }
         }
@@ -81,29 +113,25 @@ pipeline {
     }
 
     // ── 4. Build Docker Images ─────────────────────────────────────────
+    // Back on the global `agent any` (Jenkins host) which has Docker CLI
     stage('Build Images') {
       steps {
         script {
-          echo "🐳 Building Docker images — Build #${env.BUILD_NUMBER}..."
+          echo "🐳 Building images — Build #${env.BUILD_NUMBER}"
           docker.build(env.SERVER_IMAGE, '-f server/Dockerfile ./server')
           docker.build(
             env.CLIENT_IMAGE,
             "--build-arg REACT_APP_API_URL=${env.REACT_APP_API_URL ?: 'http://localhost:10000'} -f client/Dockerfile ./client"
           )
-          echo "✅ Images built: ${env.SERVER_IMAGE}, ${env.CLIENT_IMAGE}"
+          echo "✅ Built: ${env.SERVER_IMAGE}  |  ${env.CLIENT_IMAGE}"
         }
       }
     }
 
     // ── 5. Push to Docker Hub ──────────────────────────────────────────
-    // Only runs on main/master AND only if dockerhub-credentials exist.
-    // Skip gracefully if the credential hasn't been configured yet.
     stage('Push') {
       when {
-        anyOf {
-          branch 'main'
-          branch 'master'
-        }
+        anyOf { branch 'main'; branch 'master' }
       }
       steps {
         script {
@@ -116,21 +144,17 @@ pipeline {
             }
             echo "✅ Images pushed to Docker Hub"
           } catch (err) {
-            echo "⚠️  Push skipped — dockerhub-credentials not configured: ${err.message}"
+            echo "⚠️  Push skipped — add 'dockerhub-credentials' in Manage Jenkins → Credentials"
             currentBuild.result = 'UNSTABLE'
           }
         }
       }
     }
 
-    // ── 6. Deploy via SSH ──────────────────────────────────────────────
-    // Only runs on main branch AND only if all 3 deploy credentials exist.
+    // ── 6. Deploy ──────────────────────────────────────────────────────
     stage('Deploy') {
       when {
-        anyOf {
-          branch 'main'
-          branch 'master'
-        }
+        anyOf { branch 'main'; branch 'master' }
       }
       steps {
         script {
@@ -151,9 +175,9 @@ pipeline {
                 """
               }
             }
-            echo "✅ Deployed to \${DEPLOY_HOST}"
+            echo "✅ Deployed successfully"
           } catch (err) {
-            echo "⚠️  Deploy skipped — credentials not configured yet: ${err.message}"
+            echo "⚠️  Deploy skipped — add deploy credentials in Manage Jenkins → Credentials"
             currentBuild.result = 'UNSTABLE'
           }
         }
@@ -161,20 +185,11 @@ pipeline {
     }
   }
 
-  // ── Post-pipeline ────────────────────────────────────────────────────
-  // ⚠️  sh is NOT allowed directly in post{} — must use echo or wrap in node{}
+  // ── Post actions ─────────────────────────────────────────────────────
   post {
-    success {
-      echo "✅ Pipeline PASSED — Build #${env.BUILD_NUMBER} on ${env.BRANCH_NAME ?: 'unknown'}"
-    }
-    unstable {
-      echo "⚠️  Pipeline UNSTABLE — some optional stages were skipped (credentials missing?)"
-    }
-    failure {
-      echo "❌ Pipeline FAILED — Build #${env.BUILD_NUMBER} on ${env.BRANCH_NAME ?: 'unknown'}"
-    }
-    always {
-      echo "🏁 Pipeline finished with status: ${currentBuild.currentResult}"
-    }
+    success  { echo "✅ Build #${env.BUILD_NUMBER} PASSED" }
+    unstable { echo "⚠️  Build #${env.BUILD_NUMBER} UNSTABLE — optional stages skipped" }
+    failure  { echo "❌ Build #${env.BUILD_NUMBER} FAILED" }
+    always   { echo "🏁 Finished: ${currentBuild.currentResult}" }
   }
 }
