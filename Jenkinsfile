@@ -97,7 +97,10 @@ pipeline {
     // ── 5. Push to Docker Hub ──────────────────────────────────────────
     stage('Push') {
       when {
-        anyOf { branch 'main'; branch 'master' }
+        expression {
+          def br = env.GIT_BRANCH ?: ''
+          return br == 'main' || br == 'master' || br.endsWith('/main') || br.endsWith('/master')
+        }
       }
       steps {
         script {
@@ -120,7 +123,10 @@ pipeline {
     // ── 6. Deploy ──────────────────────────────────────────────────────
     stage('Deploy') {
       when {
-        anyOf { branch 'main'; branch 'master' }
+        expression {
+          def br = env.GIT_BRANCH ?: ''
+          return br == 'main' || br == 'master' || br.endsWith('/main') || br.endsWith('/master')
+        }
       }
       steps {
         script {
