@@ -13,8 +13,9 @@ pipeline {
   }
 
   environment {
-    SERVER_IMAGE = "nextrade/server:${env.BUILD_NUMBER}"
-    CLIENT_IMAGE = "nextrade/client:${env.BUILD_NUMBER}"
+    DOCKERHUB_USER = "ronnie75491"
+    SERVER_IMAGE = "ronnie75491/nextrade-server:${env.BUILD_NUMBER}"
+    CLIENT_IMAGE = "ronnie75491/nextrade-client:${env.BUILD_NUMBER}"
   }
 
   options {
