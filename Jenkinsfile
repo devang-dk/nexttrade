@@ -64,7 +64,7 @@ pipeline {
           }
           post {
             always {
-              junit allowEmptyResults: true, testResults: 'server/test-results/**/*.xml'
+              echo "ℹ️  Server test stage complete (install JUnit plugin to publish test results)"
             }
           }
         }
