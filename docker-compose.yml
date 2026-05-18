@@ -7,6 +7,7 @@ services:
 
   # ── Backend: Node.js / Express API ──────────────────────────────────
   server:
+    image: ronnie75491/nextrade-server:latest   # pulled by Jenkins deploy
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -45,6 +46,7 @@ services:
 
   # ── React Client ────────────────────────────────────────────────────
   client:
+    image: ronnie75491/nextrade-client:latest   # pulled by Jenkins deploy
     build:
       context: ./client
       dockerfile: Dockerfile
@@ -123,6 +125,7 @@ services:
 
   # ── Jenkins: CI/CD ───────────────────────────────────────────────────
   jenkins:
+    image: stock-jenkins:latest   # built locally; never auto-redeployed by pipeline
     build:
       context: ./jenkins
       dockerfile: Dockerfile
