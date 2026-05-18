@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
-  default     = "t2.micro" # Free tier eligible
+  default     = "t3.micro" # Free tier eligible in ap-south-1 (Mumbai)
 }
 
 variable "project_name" {
