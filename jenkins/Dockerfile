@@ -28,7 +28,9 @@ RUN apt-get update -qq && \
          $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" \
          > /etc/apt/sources.list.d/docker.list && \
     apt-get update -qq && \
-    apt-get install -y --no-install-recommends docker-ce-cli && \
+    apt-get install -y --no-install-recommends \
+        docker-ce-cli \
+        docker-compose-plugin && \
     rm -rf /var/lib/apt/lists/*
 
 # ── Install Node.js 18 (via NodeSource) ──────────────────────────────
@@ -46,5 +48,6 @@ USER jenkins
 # Verify tools are available (printed during image build)
 RUN java -version && \
     docker --version && \
+    docker compose version && \
     node --version && \
     npm --version
