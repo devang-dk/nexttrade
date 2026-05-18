@@ -13,9 +13,11 @@ pipeline {
   }
 
   environment {
-    DOCKERHUB_USER = "ronnie75491"
-    SERVER_IMAGE = "ronnie75491/nextrade-server:${env.BUILD_NUMBER}"
-    CLIENT_IMAGE = "ronnie75491/nextrade-client:${env.BUILD_NUMBER}"
+    DOCKERHUB_USER      = "ronnie75491"
+    SERVER_IMAGE        = "ronnie75491/nextrade-server:${env.BUILD_NUMBER}"
+    CLIENT_IMAGE        = "ronnie75491/nextrade-client:${env.BUILD_NUMBER}"
+    REACT_APP_API_URL   = "http://localhost:10000"
+    COMPOSE_PROJECT_DIR = "/var/jenkins_home/workspace/nextrade"
   }
 
   options {
@@ -121,6 +123,8 @@ pipeline {
     }
 
     // ── 6. Deploy ──────────────────────────────────────────────────────
+    // Runs docker compose directly via the Docker socket mounted in Jenkins.
+    // No SSH or remote credentials needed for this local/self-hosted setup.
     stage('Deploy') {
       when {
         expression {
@@ -131,26 +135,16 @@ pipeline {
       steps {
         script {
           try {
-            withCredentials([
-              file(credentialsId: 'nextrade-env-file', variable: 'ENV_FILE'),
-              string(credentialsId: 'deploy-host', variable: 'DEPLOY_HOST')
-            ]) {
-              sshagent(['deploy-server-ssh-key']) {
-                sh """
-                  scp -o StrictHostKeyChecking=no \$ENV_FILE deploy@\${DEPLOY_HOST}:/opt/nextrade/.env
-                  ssh -o StrictHostKeyChecking=no deploy@\${DEPLOY_HOST} '
-                    cd /opt/nextrade &&
-                    docker compose pull &&
-                    docker compose up -d --remove-orphans &&
-                    docker image prune -f
-                  '
-                """
-              }
-            }
-            echo "✅ Deployed successfully"
+            sh """
+              cd ${env.COMPOSE_PROJECT_DIR}
+              docker compose pull
+              docker compose up -d --remove-orphans
+              docker image prune -f
+            """
+            echo "✅ Deployed: server:${env.BUILD_NUMBER} + client:${env.BUILD_NUMBER} are live"
           } catch (err) {
-            echo "⚠️  Deploy skipped — add deploy credentials in Manage Jenkins → Credentials"
-            currentBuild.result = 'UNSTABLE'
+            echo "❌ Deploy failed: ${err.message}"
+            currentBuild.result = 'FAILURE'
           }
         }
       }
