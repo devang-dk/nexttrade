@@ -148,13 +148,26 @@ pipeline {
                   # Copy latest .env to the server
                   scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@\${DEPLOY_HOST}:/opt/nextrade/.env
 
-                  # Pull latest code (docker-compose.yml, nginx.conf, monitoring configs)
+                  # Deploy: initialize git repo if first time, then pull latest + restart services
                   ssh -o StrictHostKeyChecking=no ubuntu@\${DEPLOY_HOST} '
-                    cd /opt/nextrade &&
-                    git pull origin main &&
-                    docker compose pull server client &&
-                    docker compose up -d --remove-orphans &&
+                    set -e
+                    # Clone repo if .git directory is missing (first deploy or clone failed during bootstrap)
+                    if [ ! -d /opt/nextrade/.git ]; then
+                      echo "⚙️  Initializing git repo on EC2 for the first time..."
+                      cd /tmp
+                      rm -rf nextrade-init
+                      git clone https://github.com/devang-dk/nexttrade.git nextrade-init
+                      cp -rn nextrade-init/. /opt/nextrade/ 2>/dev/null || true
+                      cp -r nextrade-init/.git /opt/nextrade/.git
+                      rm -rf nextrade-init
+                    fi
+                    cd /opt/nextrade
+                    git fetch origin main
+                    git reset --hard origin/main
+                    docker compose pull server client
+                    docker compose up -d --remove-orphans
                     docker image prune -f
+                    echo "✅ NexTrade deployed successfully"
                   '
                 """
               }
