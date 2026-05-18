@@ -139,11 +139,12 @@ pipeline {
               cd ${env.COMPOSE_PROJECT_DIR}
               # Pull fresh :latest images from Docker Hub
               docker compose pull server client
-              # Explicitly remove app containers to avoid cross-project name conflicts
-              # (host may have started them under a different compose project name)
-              docker rm -f nextrade-server nextrade-client nextrade-frontend nextrade-prometheus nextrade-grafana 2>/dev/null || true
-              # Start fresh with the pulled images — no rebuild
-              docker compose up -d --no-build server client frontend prometheus grafana
+              # Remove existing server/client containers to avoid name conflicts
+              docker rm -f nextrade-server nextrade-client 2>/dev/null || true
+              # Redeploy only server and client — they use Docker Hub images.
+              # Prometheus/Grafana/Nginx use host bind-mounts which Jenkins cannot resolve,
+              # and their configs never change between code pushes anyway.
+              docker compose up -d --no-build server client
               docker image prune -f
             """
             echo "✅ Deployed: server:${env.BUILD_NUMBER} + client:${env.BUILD_NUMBER} are live"
