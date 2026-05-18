@@ -1,0 +1,18 @@
+# Terraform state — contains sensitive info, never commit
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Generated SSH private key — add to Jenkins manually
+nextrade-key.pem
+
+# Terraform working directory
+.terraform/
+.terraform.lock.hcl
+
+# Terraform plan files
+*.tfplan
+
+# Variable override files (may contain secrets)
+*.auto.tfvars
+terraform.tfvars

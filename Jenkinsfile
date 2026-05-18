@@ -122,9 +122,13 @@ pipeline {
       }
     }
 
-    // ── 6. Deploy ──────────────────────────────────────────────────────
-    // Runs docker compose directly via the Docker socket mounted in Jenkins.
-    // No SSH or remote credentials needed for this local/self-hosted setup.
+    // ── 6. Deploy to AWS EC2 ───────────────────────────────────────────
+    // Jenkins SSHes into the EC2 instance provisioned by Terraform and
+    // runs docker compose on the remote server (no Docker socket tricks needed).
+    // Required Jenkins credentials:
+    //   deploy-server-ssh-key → SSH Private Key (terraform/nextrade-key.pem)
+    //   deploy-host           → Secret text    (EC2 Elastic IP)
+    //   nextrade-env-file     → Secret file    (.env with all secrets)
     stage('Deploy') {
       when {
         expression {
@@ -135,22 +139,33 @@ pipeline {
       steps {
         script {
           try {
-            sh """
-              cd ${env.COMPOSE_PROJECT_DIR}
-              # Pull fresh :latest images from Docker Hub
-              docker compose pull server client
-              # Remove existing server/client containers to avoid name conflicts
-              docker rm -f nextrade-server nextrade-client 2>/dev/null || true
-              # Redeploy only server and client — they use Docker Hub images.
-              # Prometheus/Grafana/Nginx use host bind-mounts which Jenkins cannot resolve,
-              # and their configs never change between code pushes anyway.
-              docker compose up -d --no-build server client
-              docker image prune -f
-            """
-            echo "✅ Deployed: server:${env.BUILD_NUMBER} + client:${env.BUILD_NUMBER} are live"
+            withCredentials([
+              string(credentialsId: 'deploy-host', variable: 'DEPLOY_HOST'),
+              file(credentialsId: 'nextrade-env-file', variable: 'ENV_FILE')
+            ]) {
+              sshagent(['deploy-server-ssh-key']) {
+                sh """
+                  # Copy latest .env to the server
+                  scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@\${DEPLOY_HOST}:/opt/nextrade/.env
+
+                  # Pull latest code (docker-compose.yml, nginx.conf, monitoring configs)
+                  ssh -o StrictHostKeyChecking=no ubuntu@\${DEPLOY_HOST} '
+                    cd /opt/nextrade &&
+                    git pull origin main &&
+                    docker compose pull server client &&
+                    docker compose up -d --remove-orphans &&
+                    docker image prune -f
+                  '
+                """
+              }
+            }
+            echo "✅ Deployed Build #${env.BUILD_NUMBER} to AWS EC2"
           } catch (err) {
-            echo "❌ Deploy failed: ${err.message}"
-            currentBuild.result = 'FAILURE'
+            echo "⚠️  Deploy skipped — configure Jenkins credentials:"
+            echo "     deploy-host           → EC2 Elastic IP (from: terraform output ec2_public_ip)"
+            echo "     deploy-server-ssh-key → SSH key       (from: terraform/nextrade-key.pem)"
+            echo "     nextrade-env-file     → Secret file   (your .env file)"
+            currentBuild.result = 'UNSTABLE'
           }
         }
       }
