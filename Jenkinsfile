@@ -139,8 +139,8 @@ pipeline {
               cd ${env.COMPOSE_PROJECT_DIR}
               # Pull fresh images for app services only (Jenkins redeploys itself separately)
               docker compose pull server client
-              # Restart app services without rebuilding — use the just-pulled Docker Hub images
-              docker compose up -d --no-build --no-deps server client frontend prometheus grafana
+              # Force-recreate replaces running containers with the freshly pulled images
+              docker compose up -d --no-build --force-recreate server client frontend prometheus grafana
               docker image prune -f
             """
             echo "✅ Deployed: server:${env.BUILD_NUMBER} + client:${env.BUILD_NUMBER} are live"
