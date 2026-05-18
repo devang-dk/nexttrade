@@ -3,6 +3,8 @@
 # Services: backend · react client · nginx · prometheus · grafana · jenkins
 # =====================================================================
 
+name: nextrade   # fixes project name regardless of which directory compose runs from
+
 services:
 
   # ── Backend: Node.js / Express API ──────────────────────────────────

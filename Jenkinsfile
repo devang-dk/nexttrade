@@ -137,10 +137,13 @@ pipeline {
           try {
             sh """
               cd ${env.COMPOSE_PROJECT_DIR}
-              # Pull fresh images for app services only (Jenkins redeploys itself separately)
+              # Pull fresh :latest images from Docker Hub
               docker compose pull server client
-              # Force-recreate replaces running containers with the freshly pulled images
-              docker compose up -d --no-build --force-recreate server client frontend prometheus grafana
+              # Explicitly remove app containers to avoid cross-project name conflicts
+              # (host may have started them under a different compose project name)
+              docker rm -f nextrade-server nextrade-client nextrade-frontend nextrade-prometheus nextrade-grafana 2>/dev/null || true
+              # Start fresh with the pulled images — no rebuild
+              docker compose up -d --no-build server client frontend prometheus grafana
               docker image prune -f
             """
             echo "✅ Deployed: server:${env.BUILD_NUMBER} + client:${env.BUILD_NUMBER} are live"
