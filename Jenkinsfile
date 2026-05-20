@@ -1,9 +1,3 @@
-// =====================================================================
-// Jenkinsfile — NexTrade CI/CD Pipeline
-// Jenkins image has Node.js 18 + Docker CLI pre-installed (jenkins/Dockerfile)
-// so all stages run on `agent any` — no Docker-in-Docker agents needed.
-// =====================================================================
-
 pipeline {
 
   agent any
@@ -27,8 +21,6 @@ pipeline {
   }
 
   stages {
-
-    // ── 1. Checkout ────────────────────────────────────────────────────
     stage('Checkout') {
       steps {
         checkout scm
@@ -36,7 +28,6 @@ pipeline {
       }
     }
 
-    // ── 2. Install ─────────────────────────────────────────────────────
     stage('Install') {
       parallel {
         stage('Server deps') {
@@ -56,7 +47,6 @@ pipeline {
       }
     }
 
-    // ── 3. Test ────────────────────────────────────────────────────────
     stage('Test') {
       parallel {
         stage('Server tests') {
@@ -81,7 +71,6 @@ pipeline {
       }
     }
 
-    // ── 4. Build Docker Images ─────────────────────────────────────────
     stage('Build Images') {
       steps {
         script {
@@ -96,7 +85,6 @@ pipeline {
       }
     }
 
-    // ── 5. Push to Docker Hub ──────────────────────────────────────────
     stage('Push') {
       when {
         expression {
@@ -122,13 +110,6 @@ pipeline {
       }
     }
 
-    // ── 6. Deploy to AWS EC2 ───────────────────────────────────────────
-    // Jenkins SSHes into the EC2 instance provisioned by Terraform and
-    // runs docker compose on the remote server (no Docker socket tricks needed).
-    // Required Jenkins credentials:
-    //   deploy-server-ssh-key → SSH Private Key (terraform/nextrade-key.pem)
-    //   deploy-host           → Secret text    (EC2 Elastic IP)
-    //   nextrade-env-file     → Secret file    (.env with all secrets)
     stage('Deploy') {
       when {
         expression {
