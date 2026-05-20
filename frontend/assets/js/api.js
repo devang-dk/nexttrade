@@ -77,6 +77,17 @@ async function apiRequest(method, path, body = null) {
   if (body) opts.body = JSON.stringify(body);
 
   const res = await fetch(API_BASE + path, opts);
+
+  // Token expired or invalid — clear session and redirect to login
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    if (!window.location.pathname.endsWith('index.html') && window.location.pathname !== '/') {
+      window.location.href = 'index.html';
+    }
+    throw new Error('Session expired. Please log in again.');
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(err.message || 'Request failed');
