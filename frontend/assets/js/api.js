@@ -3,10 +3,10 @@
 // ===================================================================
 
 // ⚠️ CONFIGURATION: API base URL
-// In production: set window.NEXTRADE_API_URL via config.js (injected by Vercel/Render)
-// In development: defaults to localhost:8081
-const API_BASE = (window.NEXTRADE_API_URL || 'http://localhost:8081') + '/api';
-const WS_BASE  =  window.NEXTRADE_API_URL || 'http://localhost:8081';
+// Uses relative /api path — works on any host (localhost, EC2, custom domain)
+// without needing to set window.NEXTRADE_API_URL at all.
+const API_BASE = '/api';
+const WS_BASE  = window.location.origin;
 const DEMO_MODE = false; // false = real backend + MongoDB, true = local demo mode
 
 
