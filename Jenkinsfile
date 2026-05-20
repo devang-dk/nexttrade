@@ -129,6 +129,13 @@ pipeline {
                   # Copy latest .env to the server
                   scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@\${DEPLOY_HOST}:/opt/nextrade/.env
 
+                  # Patch production-specific values after SCP
+                  # (credential file may have Windows/dev values that break Linux containers)
+                  ssh -o StrictHostKeyChecking=no ubuntu@\${DEPLOY_HOST} '
+                    sed -i "s|mongodb://host.docker.internal:27017/Stock|mongodb://nextrade-mongodb:27017/Stock|g" /opt/nextrade/.env
+                    sed -i "s/JWT_EXPIRY=24h/JWT_EXPIRY=7d/g" /opt/nextrade/.env
+                  '
+
                   # Deploy: initialize git repo if first time, then pull latest + restart services
                   ssh -o StrictHostKeyChecking=no ubuntu@\${DEPLOY_HOST} '
                     set -e
