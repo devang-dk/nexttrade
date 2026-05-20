@@ -7,6 +7,18 @@ name: nextrade   # fixes project name regardless of which directory compose runs
 
 services:
 
+  # ── MongoDB ──────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: nextrade-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - nextrade-net
+
   # ── Backend: Node.js / Express API ──────────────────────────────────
   server:
     image: ronnie75491/nextrade-server:latest   # pulled by Jenkins deploy
@@ -37,6 +49,8 @@ services:
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
       TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+    depends_on:
+      - mongodb
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:10000/health"]
       interval: 30s
@@ -75,8 +89,7 @@ services:
       - ./frontend:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      server:
-        condition: service_healthy
+      - server
     networks:
       - nextrade-net
 
@@ -149,6 +162,8 @@ services:
 
 # ── Named Volumes ────────────────────────────────────────────────────
 volumes:
+  mongodb-data:
+    driver: local
   prometheus-data:
     driver: local
   grafana-data:
