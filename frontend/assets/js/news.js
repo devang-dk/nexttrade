@@ -103,7 +103,7 @@ async function filterBySymbol(symbol) {
 }
 
 // ── Search ─────────────────────────────────────────────────────────
-function onSearchInput(val) {
+function onNewsSearchInput(val) {
   searchQuery = val.trim().toLowerCase();
   renderArticles();
 }
