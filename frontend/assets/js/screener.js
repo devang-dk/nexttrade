@@ -50,7 +50,7 @@ async function loadData() {
     const mktLabel = document.getElementById('screenerMarketLabel');
     if (mktLabel) mktLabel.textContent = `${mkt.flag || ''} ${mkt.label || 'NYSE / NASDAQ'}`;
 
-    const res = await fetch(`http://localhost:8081/api/market/screener?market=${marketId}`);
+    const res = await fetch(`/api/market/screener?market=${marketId}`);
 
     if (!res.ok) throw new Error('Failed to load screener data');
     allData = await res.json();

@@ -63,7 +63,7 @@ async function loadNews(category = activeCategory) {
 
   try {
     const token = localStorage.getItem('token');
-    const res   = await fetch(`http://localhost:8081/api/news/market?category=${category}`, {
+    const res   = await fetch(`/api/news/market?category=${category}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('API error');
@@ -90,7 +90,7 @@ async function filterBySymbol(symbol) {
 
   try {
     const token = localStorage.getItem('token');
-    const res   = await fetch(`http://localhost:8081/api/news/company/${symbol}`, {
+    const res   = await fetch(`/api/news/company/${symbol}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('API error');
@@ -343,5 +343,5 @@ function escHtml(str) {
 // hotlink protection is bypassed (proxy fetches without a Referer header).
 function proxyImg(url) {
   if (!url || !url.startsWith('http')) return '';
-  return `http://localhost:8081/api/news/img?url=${encodeURIComponent(url)}`;
+  return `/api/news/img?url=${encodeURIComponent(url)}`;
 }

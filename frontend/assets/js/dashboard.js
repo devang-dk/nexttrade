@@ -171,7 +171,7 @@ async function updateMarketStatus() {
   try {
     const token = localStorage.getItem('token');
     const mktId = (typeof getActiveMarket === 'function') ? getActiveMarket().id : 'us';
-    const res   = await fetch(`http://localhost:8081/api/market/status?market=${mktId}`, {
+    const res   = await fetch(`/api/market/status?market=${mktId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) return;
@@ -591,7 +591,7 @@ async function getUsdPrice(localPrice) {
   }
 
   try {
-    const resp = await fetch(`http://localhost:8081/api/market/exchange-rate/${currencyCode}`);
+    const resp = await fetch(`/api/market/exchange-rate/${currencyCode}`);
     if (!resp.ok) throw new Error('FX fetch failed');
     const data = await resp.json();
     _fxRateCache[currencyCode] = { rate: data.rate, ts: Date.now() };
@@ -848,7 +848,7 @@ async function _dashEnsureFxRate(currencyCode) {
   const cached = _dashFxCache[currencyCode];
   if (cached && Date.now() - cached.ts < 5 * 60 * 1000) return;
   try {
-    const resp = await fetch(`http://localhost:8081/api/market/exchange-rate/${currencyCode}`);
+    const resp = await fetch(`/api/market/exchange-rate/${currencyCode}`);
     if (!resp.ok) throw new Error();
     const data = await resp.json();
     _dashFxCache[currencyCode] = { rate: data.rate, ts: Date.now() };

@@ -809,7 +809,7 @@ async function handleRegister(e) {
 async function demoLogin() {
   try {
     showToast('Starting demo session…', 'info');
-    const res = await fetch('http://localhost:8081/api/auth/demo', { method: 'POST' });
+    const res = await fetch('/api/auth/demo', { method: 'POST' });
     if (!res.ok) throw new Error('Server error');
     const data = await res.json();
     localStorage.setItem('token', data.token);
