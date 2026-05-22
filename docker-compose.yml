@@ -7,7 +7,7 @@ name: nextrade   # fixes project name regardless of which directory compose runs
 
 services:
 
-  # ── MongoDB ──────────────────────────────────────────────────────────
+  
   mongodb:
     image: mongo:7.0
     container_name: nextrade-mongodb
@@ -19,7 +19,7 @@ services:
     networks:
       - nextrade-net
 
-  # ── Backend: Node.js / Express API ──────────────────────────────────
+  
   server:
     image: ronnie75491/nextrade-server:latest   # pulled by Jenkins deploy
     build:
@@ -60,7 +60,7 @@ services:
     networks:
       - nextrade-net
 
-  # ── React Client ────────────────────────────────────────────────────
+  
   client:
     image: ronnie75491/nextrade-client:latest   # pulled by Jenkins deploy
     build:
@@ -78,7 +78,7 @@ services:
     networks:
       - nextrade-net
 
-  # ── Nginx: Serves the static HTML frontend ───────────────────────────
+  
   frontend:
     image: nginx:1.27-alpine
     container_name: nextrade-frontend
@@ -93,7 +93,7 @@ services:
     networks:
       - nextrade-net
 
-  # ── Prometheus: Metrics Scraper ──────────────────────────────────────
+  
   prometheus:
     image: prom/prometheus:v2.52.0
     container_name: nextrade-prometheus
@@ -116,7 +116,7 @@ services:
     networks:
       - nextrade-net
 
-  # ── Grafana: Dashboards & Visualisation ─────────────────────────────
+  
   grafana:
     image: grafana/grafana:10.4.2
     container_name: nextrade-grafana
@@ -138,7 +138,7 @@ services:
     networks:
       - nextrade-net
 
-  # ── Jenkins: CI/CD ───────────────────────────────────────────────────
+  
   jenkins:
     image: stock-jenkins:latest   # built locally; never auto-redeployed by pipeline
     build:
@@ -160,7 +160,7 @@ services:
     networks:
       - nextrade-net
 
-# ── Named Volumes ────────────────────────────────────────────────────
+
 volumes:
   mongodb-data:
     driver: local
@@ -171,7 +171,7 @@ volumes:
   jenkins-data:
     driver: local
 
-# ── Network ──────────────────────────────────────────────────────────
+
 networks:
   nextrade-net:
     driver: bridge
